@@ -1,0 +1,5 @@
+Dependancies
+sudo apt-get install libopencv-dev python-opencv libv4l-dev
+pip install v4l2capture v4l2
+
+wiringpi
