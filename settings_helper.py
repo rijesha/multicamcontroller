@@ -8,6 +8,33 @@ import os
 import logging
 import mmap
 from camera import camera
+import serial
+from threading import Thread
+import time
+
+logging.basicConfig(filename='sessions/session.log',level=logging.DEBUG)
+device_port = "/dev/ttyUSB1"
+has_sensor_board = False
+lastdevicestring = "hello"
+shutdown = False
+
+def start_serial_device():
+    global has_sensor_board
+    global lastdevicestring
+    ser = serial.Serial(device_port, 115200)
+    firststring = ser.readline() 
+    if firststring == '\n':
+        ser.close()
+        print("this is the arduino")
+    elif firststring == '------------------------------------\r\n':
+        print("this is the sensor board")
+        has_sensor_board = True
+        ser.reset_input_buffer()
+        ser.write("stream")
+        while not shutdown :
+            lastdevicestring = ser.readline()
+            time.sleep(.05)
+    ser.close()
 
 def nothing(x):
     pass
@@ -17,12 +44,10 @@ if __name__ == '__main__':
     camera_list_json = json.loads(cammera_list_data)
     cameras = camera_list_json['cameras']
     cam_devices = []
-    #for cam in cameras:
-    #    if os.path.exists(cam['cam_location']):
-    #        print("found camera: " + cam['cam_location'])
-    #        cam_dev = camera(cam)
-    #        cam_dev.setuphack()
 
+    if os.path.exists(device_port):
+        t = Thread(target=start_serial_device)
+        t.start()
 
     for cam in cameras:
         if os.path.exists(cam['cam_location']):
@@ -45,6 +70,7 @@ if __name__ == '__main__':
 
     count = 0
     while True:
+        print(lastdevicestring)
         count = count + 1
         framenum = 0
         frames = []
@@ -81,3 +107,6 @@ if __name__ == '__main__':
     print("closing Camers")
     for cam in cam_devices:
         cam.close()
+
+    global shutdown    
+    shutdown = True

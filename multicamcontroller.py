@@ -19,18 +19,34 @@ import logging
 from camera import camera
 
 logging.basicConfig(filename='sessions/session.log',level=logging.DEBUG)
-
 device_port = "/dev/ttyUSB0"
+has_sensor_board = False
+lastdevicestring = "hello"
+shutdown = False
 
-
-def delay_trigger(seconds):
+def start_serial_device():
+    global has_sensor_board
+    global lastdevicestring
+    print("starting Serial Device")
     ser = serial.Serial(device_port, 115200)
-    time.sleep(5)
-    ser.write("AT+STOP")
-    time.sleep(seconds)
-    ser.write("AT+START")
+    ser.readline()
+    ser.readline()
+    firststring = ser.readline()
+    print("the first line is: " + firststring)
+
+
+    if 'USB Camera HUB Board' in firststring:
+        ser.close()
+        print("this is the arduino")
+    elif "Timing" in firststring:
+        print("this is the sensor board")
+        has_sensor_board = True
+        ser.reset_input_buffer()
+        ser.write("stream")
+        while not shutdown :
+            lastdevicestring = ser.readline()
+            time.sleep(.07)
     ser.close()
-    print("closed Serial")
     
 
 if __name__ == '__main__':
@@ -55,6 +71,11 @@ if __name__ == '__main__':
     if not found_cameras :
         exit()
 
+    if os.path.exists(device_port):
+        t = Thread(target=start_serial_device)
+        t.start()
+        time.sleep(5)
+
     wpi.wiringPiSetup()
     wpi.pinMode(0, 0)
 
@@ -73,6 +94,10 @@ if __name__ == '__main__':
     os.mkdir("sessions/session_" + sessionCount)
 
     logging.info("Made Directory: " + "sessions/session_" + sessionCount)
+
+    if has_sensor_board:
+        sensor_board_file = open("sessions/session_" + sessionCount +"/sensor_board.log", "w")
+    
     for cam in cam_devices:
         cam.startCapturingThread()
 
@@ -80,17 +105,22 @@ if __name__ == '__main__':
         if wpi.digitalRead(0):
             currenttime = time.time()
             timesincelast = currenttime 
-            time.sleep(.05)
+            time.sleep(.07)
             frame_num = frame_num + 1
             logging.info("reading frame: " + str(frame_num))
 
             for cam in cam_devices:
                 cam.triggerNewFrame()
-            
+            if has_sensor_board:
+                sensor_board_file.write("frame= %s," % str(frame_num) + lastdevicestring)
+                sensor_board_file.flush()
+
             for cam in cam_devices:
                 frame = cam.getNewFrame()
                 logstring = cam.generateCamLogString()
                 if str(frame) != 'None' :
+                    average = cv2.mean(frame)
+                    cam.autoExpose(average[0])
                     cv2.imwrite("sessions/session_" + sessionCount + "/frame_" + str(frame_num) + "_cam_" + cam.cam_num + ".png", frame)
                     with open("sessions/session_" + sessionCount + "/frame_" + str(frame_num) + "_cam_" + cam.cam_num + ".txt", "w") as log_file:
                         log_file.write(logstring)
@@ -100,3 +130,6 @@ if __name__ == '__main__':
     print("closing Camers")
     for cam in cam_devices:
         cam.close()
+
+    if has_sensor_board:
+        sensor_board_file.close()
