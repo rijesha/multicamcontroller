@@ -73,6 +73,8 @@ if __name__ == '__main__':
     os.mkdir("sessions/session_" + sessionCount)
 
     logging.info("Made Directory: " + "sessions/session_" + sessionCount)
+    for cam in cam_devices:
+        cam.startCapturingThread()
 
     while True:
         if wpi.digitalRead(0):
@@ -81,10 +83,17 @@ if __name__ == '__main__':
             time.sleep(.05)
             frame_num = frame_num + 1
             logging.info("reading frame: " + str(frame_num))
+
             for cam in cam_devices:
-                frame = cam.read()
+                cam.triggerNewFrame()
+            
+            for cam in cam_devices:
+                frame = cam.getNewFrame()
+                logstring = cam.generateCamLogString()
                 if str(frame) != 'None' :
                     cv2.imwrite("sessions/session_" + sessionCount + "/frame_" + str(frame_num) + "_cam_" + cam.cam_num + ".png", frame)
+                    with open("sessions/session_" + sessionCount + "/frame_" + str(frame_num) + "_cam_" + cam.cam_num + ".txt", "w") as log_file:
+                        log_file.write(logstring)
         else:
             time.sleep(usecs/1000000.0)
 

@@ -10,6 +10,7 @@ import threading
 class camera:
     def __init__(self, cam_data):
         self.frame = None
+        self.running = True
         self.getNewFrameEvent = threading.Event()
         self.getNewFrameEvent.clear()
 
@@ -42,6 +43,7 @@ class camera:
         self.update_frame_rate()
 
         self.video.start()
+
 
     def generateCamLogString(self):
         logstring = []
@@ -143,12 +145,14 @@ class camera:
         return np.fromstring(image_data, np.uint8).reshape(960,1280)
 
     def startCapturingThread(self):
-        t = threading.Thread(target=self.frameRunner)
-        t.start()
+        self.t = threading.Thread(target=self.frameRunner)
+        self.t.start()
 
     def frameRunner(self):
-        while True:
+        while self.running:
             self.getNewFrameEvent.wait()
+            if not self.running:
+                break
             self.getNewFrameEvent.clear()
             self.read_with_timeout()
             self.gotNewFrameEvent.set()
@@ -178,5 +182,7 @@ class camera:
             self.frame = np.fromstring(image_data, np.uint8).reshape(960,1280)
 
     def close(self):
+        self.getNewFrameEvent.set()
+        self.running = False
         self.video.stop()
         self.video.close()

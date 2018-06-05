@@ -40,6 +40,8 @@ if __name__ == '__main__':
         cv2.createTrackbar(cam.cam_num + ': Gain','window',cam.gain,550,cam.update_gain)
         cv2.createTrackbar(cam.cam_num + ': Brightness','window',cam.bright,255,cam.update_brightness)
         
+    for cam in cam_devices:
+        cam.startCapturingThread()
 
     count = 0
     while True:
@@ -48,7 +50,10 @@ if __name__ == '__main__':
         frames = []
         output = None
         for cam in cam_devices:
-            frame = cam.read()
+            cam.triggerNewFrame()
+
+        for cam in cam_devices:
+            frame = cam.getNewFrame()    
             logstring = cam.generateCamLogString()
             if str(frame) != 'None' :
                 biggest = np.amax(frame)
