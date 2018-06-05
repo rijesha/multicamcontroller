@@ -30,11 +30,6 @@ class camera:
         self.update_frame_rate()
 
 
-        #try:
-        #    self.video.read_and_queue()
-        #except:
-        #    print("COuldnt read queue")
-
     def update_gain(self, value):
         c = v4l2.v4l2_control()
         c.id = v4l2.V4L2_CID_GAIN
@@ -67,34 +62,6 @@ class camera:
         c.parm.capture.timeperframe.denominator = 10
         fcntl.ioctl(self.video.fileno(), v4l2.VIDIOC_S_PARM, c)
 
-
-    def clearBuffer(self):
-        select.select((self.video,), (), ())
-        image_data = self.video.read_and_queue()
-
-    def setuphack(self):
-        timeout = 3
-        readable, writable, exceptional = select.select((self.video.fileno(),), (), (), timeout)
-
-        print("inside setupHack timeout")
-        print(readable)
-        if not readable:
-            print 'timed out, do some other work here'
-        
-
-
-    def read(self):
-        select.select((self.video.fileno(),), (), ())
-        image_data = self.video.read_and_queue()
-
-        if len(image_data) != 1228800:
-            print("FAILED")
-            return None
-        return np.fromstring(image_data, np.uint8).reshape(960,1280)
-
-    def close(self):
-        self.video.stop()
-        self.video.close()
 
 
 def nothing(x):
