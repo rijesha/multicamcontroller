@@ -56,17 +56,18 @@ if __name__ == '__main__':
 
 
     cv2.namedWindow( 'window',cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('window', 1500,1000)
+    cv2.resizeWindow('window', 2500,2000)
 
     max_value = [] 
     for cam in cam_devices:
         max_value.append(0)
         cv2.createTrackbar(cam.cam_num + ': Exposure','window',cam.expo,255,cam.update_exposure)
         cv2.createTrackbar(cam.cam_num + ': Gain','window',cam.gain,550,cam.update_gain)
-        cv2.createTrackbar(cam.cam_num + ': Brightness','window',cam.bright,255,cam.update_brightness)
+        #cv2.createTrackbar(cam.cam_num + ': Brightness','window',cam.bright,255,cam.update_brightness)
         
     for cam in cam_devices:
-        cam.startCapturingThread()
+        pass
+        #cam.startCapturingThread()
 
     count = 0
     while True:
@@ -75,14 +76,17 @@ if __name__ == '__main__':
         framenum = 0
         frames = []
         output = None
-        for cam in cam_devices:
-            cam.triggerNewFrame()
+        #for cam in cam_devices:
+        #    cam.triggerNewFrame()
 
         for cam in cam_devices:
-            frame = cam.getNewFrame()    
+            #frame = cam.getNewFrame()
+            frame = cam.read()    
             logstring = cam.generateCamLogString()
             if str(frame) != 'None' :
-                biggest = np.amax(frame)
+                blurred = cv2.blur(frame, (3, 3))
+                biggest = np.amax(blurred)
+                print(biggest)
                 focus = cv2.Laplacian(frame, cv2.CV_32F).var()
                 average = cv2.mean(frame)
                 frame = cv2.cvtColor(frame,cv2.COLOR_GRAY2RGB)
@@ -91,7 +95,10 @@ if __name__ == '__main__':
                 cv2.putText(frame,"average: " + str(average[0]), (100,300), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0),3)
                 cv2.putText(frame,"exposure: " + str(cam.expo), (100,400), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0),3)
                 cv2.putText(frame,"gain: " + str(cam.gain), (100,500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0),3)
-                cam.autoExpose(average[0])
+                #cam.autoExpose(biggest)
+                if cam.cam_num == "3":
+                    print("saving cam 3")
+                    cv2.imwrite("frame_" + str(count) +"_cam_" + cam.cam_num + ".png", frame)
                 frames.append(frame)
                 if str(output) == 'None':
                     output = frame

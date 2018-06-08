@@ -9,6 +9,7 @@ import threading
 
 class camera:
     def __init__(self, cam_data):
+        self.disconnected = False
         self.frame = None
         self.running = True
         self.getNewFrameEvent = threading.Event()
@@ -22,7 +23,7 @@ class camera:
         self.cam_num = str(cam_data["cam_num"])
         self.expo = cam_data["exposure_absolute"]
         self.bright = cam_data["brightness"]
-        self.gain = cam_data["gain"]
+        self.gain = 1
         self.privacy = cam_data["privacy"]
 
         self.centrefreq = str(cam_data["filter_centre(nm)"])
@@ -55,44 +56,23 @@ class camera:
         logstring.append("vfv (deg): " + self.vfv)
         logstring.append("exposure: " + str(self.expo))
         logstring.append("gain: " + str(self.gain))
-        return '\n'.join(logstring)
+        return ','.join(logstring)
         
-    def autoExpose(self, frame_average):
-        if frame_average < 55 and frame_average > 45:
-            return 
-        offset =  50 - frame_average
+    def autoExpose(self, max_value):
+        expo_time = self.expo
+        if max_value > 220:
+            expo_time = self.expo - 1
+        elif max_value < 180:
+            expo_time = self.expo + 1
 
-        overexposed = True if offset > 0 else False
-        
-        expo_time = self.expo + (offset/2)
-        gain_new = self.gain + (offset)
-        
         if expo_time > 20:
             expo_time = 20
         elif expo_time < 1:
             expo_time = 1
         
-        if gain_new < 1:
-            gain_new = 1
-        elif gain_new > 255:
-            gain_new = 255
-
-        if overexposed:
-            if self.expo != expo_time:
-                self.update_exposure(int(expo_time))
-                self.expo = int(expo_time)
-            elif self.gain != gain_new:
-                self.update_gain(int(gain_new))
-                self.gain = int(gain_new)
-        
-        else:
-            if self.gain != gain_new:
-                self.update_gain(int(gain_new))
-                self.gain = int(gain_new)
-            elif self.expo != expo_time:
-                self.update_exposure(int(expo_time))
-                self.expo = int(expo_time)
-        
+        if self.expo != expo_time:
+            self.update_exposure(int(expo_time))
+            self.expo = int(expo_time) 
 
     def update_gain(self, value):
         c = v4l2.v4l2_control()
@@ -154,7 +134,13 @@ class camera:
             if not self.running:
                 break
             self.getNewFrameEvent.clear()
-            self.read_with_timeout()
+            try:
+                self.read_with_timeout()
+            except IOError :
+                self.disconnected = True
+                self.gotNewFrameEvent.set()
+                break
+            
             self.gotNewFrameEvent.set()
 
     def triggerNewFrame(self):

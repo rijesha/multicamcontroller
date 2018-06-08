@@ -17,11 +17,13 @@ import time
 import argparse
 import logging
 from camera import camera
+import subprocess
 
 logging.basicConfig(filename='sessions/session.log',level=logging.DEBUG)
 device_port = "/dev/ttyUSB0"
 has_sensor_board = False
 lastdevicestring = "hello"
+global shutdown
 shutdown = False
 
 def start_serial_device():
@@ -98,11 +100,30 @@ if __name__ == '__main__':
     if has_sensor_board:
         sensor_board_file = open("sessions/session_" + sessionCount +"/sensor_board.log", "w")
     
+    cam_devices_up = len(cam_devices)
     for cam in cam_devices:
         cam.startCapturingThread()
 
-    while True:
+    devices_to_remove = []
+
+    found_first_pulse = False
+    
+    while not found_first_pulse:
         if wpi.digitalRead(0):
+            found_first_pulse = True
+        else:
+            time.sleep(.5/1000000.0)
+
+    print("got first pulse")
+    time.sleep(.1)
+
+    usecscount = 0
+    while True:
+        if len(cam_devices) == 0:
+            break
+        if wpi.digitalRead(0):
+            print(usecscount)
+            usecscount = 0
             currenttime = time.time()
             timesincelast = currenttime 
             time.sleep(.07)
@@ -111,21 +132,34 @@ if __name__ == '__main__':
 
             for cam in cam_devices:
                 cam.triggerNewFrame()
+
             if has_sensor_board:
-                sensor_board_file.write("frame= %s," % str(frame_num) + lastdevicestring)
+                sensor_board_file.write("frame= %s," % str(frame_num) + lastdevicestring + '\r\n')
                 sensor_board_file.flush()
 
             for cam in cam_devices:
                 frame = cam.getNewFrame()
+                if cam.disconnected:
+                    devices_to_remove.append(cam)
+
                 logstring = cam.generateCamLogString()
                 if str(frame) != 'None' :
-                    average = cv2.mean(frame)
-                    cam.autoExpose(average[0])
+                    blurred = cv2.blur(frame, (3, 3))
+                    biggest = np.amax(blurred)
+                    try:
+                        cam.autoExpose(biggest)
+                    except:
+                        print("failed to change exposure")
+
                     cv2.imwrite("sessions/session_" + sessionCount + "/frame_" + str(frame_num) + "_cam_" + cam.cam_num + ".png", frame)
                     with open("sessions/session_" + sessionCount + "/frame_" + str(frame_num) + "_cam_" + cam.cam_num + ".txt", "w") as log_file:
                         log_file.write(logstring)
+            
+            for d in devices_to_remove:
+                cam_devices.remove(d)
         else:
             time.sleep(usecs/1000000.0)
+            usecscount = usecscount + 1
 
     print("closing Camers")
     for cam in cam_devices:
@@ -133,3 +167,5 @@ if __name__ == '__main__':
 
     if has_sensor_board:
         sensor_board_file.close()
+    shutdown = True
+    subprocess.call("sync")
