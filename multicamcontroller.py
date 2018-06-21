@@ -271,3 +271,4 @@ if __name__ == '__main__':
             time.sleep(.1)
     
     wpi.digitalWrite(0,1)
+    logging.info("closed: " + session_str)
