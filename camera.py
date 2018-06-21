@@ -114,7 +114,7 @@ class camera:
     def read(self, retry = 1):
         select.select((self.video.fileno(),), (), ())
         image_data = self.video.read_and_queue()
-        logging.debug("read cam: " + self.cam_num + " with length of: " + str(len(image_data)))
+        #logging.debug("read cam: " + self.cam_num + " with length of: " + str(len(image_data)))
         if len(image_data) != 1228800:
             print("FAILED " + self.cam_num + " -- retrying")
             logging.warning("FAILED " + self.cam_num + " -- retrying")
@@ -151,7 +151,7 @@ class camera:
         self.gotNewFrameEvent.clear()
         return self.frame
 
-    def read_with_timeout(self, timeout = .500):
+    def read_with_timeout(self, timeout = .400):
         output = select.select((self.video.fileno(),), (), (), timeout)
         if len(output[0]) == 0:
             print("timeout " + self.cam_num )
@@ -172,3 +172,7 @@ class camera:
         self.running = False
         self.video.stop()
         self.video.close()
+
+    def hardclose(self):
+        self.getNewFrameEvent.set()
+        self.running = False

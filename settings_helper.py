@@ -66,6 +66,7 @@ if __name__ == '__main__':
         #cv2.createTrackbar(cam.cam_num + ': Brightness','window',cam.bright,255,cam.update_brightness)
         
     for cam in cam_devices:
+        cam.update_privacy(0)
         pass
         #cam.startCapturingThread()
 
@@ -84,6 +85,11 @@ if __name__ == '__main__':
             frame = cam.read()    
             logstring = cam.generateCamLogString()
             if str(frame) != 'None' :
+                w = 640
+                x = 320
+                h = 480
+                y = 240
+                frame = frame[y:y+h, x:x+w]
                 blurred = cv2.blur(frame, (3, 3))
                 biggest = np.amax(blurred)
                 print(biggest)
@@ -96,9 +102,11 @@ if __name__ == '__main__':
                 cv2.putText(frame,"exposure: " + str(cam.expo), (100,400), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0),3)
                 cv2.putText(frame,"gain: " + str(cam.gain), (100,500), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0),3)
                 #cam.autoExpose(biggest)
-                if cam.cam_num == "3":
-                    print("saving cam 3")
-                    cv2.imwrite("frame_" + str(count) +"_cam_" + cam.cam_num + ".png", frame)
+                #if cam.cam_num == "3":
+                #    print("saving cam 3")
+                #    cv2.imwrite("frame_" + str(count) +"_cam_" + cam.cam_num + ".png", frame)
+                
+                
                 frames.append(frame)
                 if str(output) == 'None':
                     output = frame
@@ -108,7 +116,7 @@ if __name__ == '__main__':
 
         # Display the resulting frame
         cv2.imshow( "window",output)
-        if cv2.waitKey(1000) & 0xFF == ord('q'):
+        if cv2.waitKey(250) & 0xFF == ord('q'):
             break
 
     print("closing Camers")
