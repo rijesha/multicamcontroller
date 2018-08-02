@@ -89,12 +89,12 @@ def trigger_thread():
 
 if __name__ == '__main__':
 
-    time.sleep(5)
+    time.sleep(15)
     cammera_list_data = open("camera_list.json").read()
     camera_list_json = json.loads(cammera_list_data)
     cameras = camera_list_json['cameras']
     cam_devices = []
-    found_cameras = False
+    found_cameras = 0
 
     isprimarycomputer = False
     for cam in cameras:
@@ -102,11 +102,12 @@ if __name__ == '__main__':
             print("found camera: " + cam['cam_location'])
             logging.info("found camera: " + cam['cam_location'])
             cam_devices.append(camera(cam))
-            found_cameras = True
+            found_cameras = found_cameras + 1
             if cam["cam_num"] == 4 :
                 isprimarycomputer = True
         
-    if not found_cameras :
+    if found_cameras < 2 :
+        logging.info("Did not find enough cameras. Exiting")
         exit()
 
     if os.path.exists(device_port):
